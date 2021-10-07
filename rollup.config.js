@@ -5,7 +5,7 @@ import pkg from './package.json';
 
 export default [
     {
-        input: "src/indexedDB.js",
+        input: "src/index.js",
         output: {
             name: 'docgen-toolkit',
             file: pkg.browser,
@@ -16,8 +16,9 @@ export default [
             commonjs(),
             babel({
                 exclude: ["node_modules/**"],
+                runtimeHelpers: true
             })
-        ]
+        ],
     },
     {
         input: "src/index.js",
@@ -28,6 +29,7 @@ export default [
         plugins: [
             babel({
                 exclude: ["node_modules/**"],
+                runtimeHelpers: true
             }),
         ],
     },
