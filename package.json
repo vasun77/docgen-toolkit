@@ -33,6 +33,8 @@
     "src"
   ],
   "dependencies": {
-    "isomorphic-fetch": "^3.0.0"
+    "isomorphic-fetch": "^3.0.0",
+    "jszip": "^3.7.1",
+    "sax": "^1.2.4"
   }
 }
