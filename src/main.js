@@ -82,12 +82,25 @@ async function parseTemplate(template) {
 
 async function createReport (options) {
     logger.debug('Create Report...');
-    const { data, template} = options;
+    const { data, template, queryVars} = options;
+    const literalXmlDelimiter = options.literalXmlDelimiter || DEFAULT_LITERAL_XML_DELIMITER;
+    const createOptions = {
+        literalXmlDelimiter,
+        processLineBreaks: options.processLineBreaks !== null ? options.processLineBreaks : true,
+    }
     const { jsTemplate, mainDocument, zip, contentTypes } = await parseTemplate(
         template
     );
 
-    let queryResult = data;
+    let queryResult = null;
+    if  (typeof data === 'function') {
+        logger.debug('Looking for the query in the template');
+        const query = await extractQuery(prepped_template, createOptions);
+        logger.debug(`Query: ${query || 'no query found'}`);
+        queryResult = await data(query, queryVars);
+    } else {
+        queryResult = data;
+    }
     logger.debug(`check parsed data => ${data}`)
 }
 
