@@ -45,15 +45,43 @@ const getNextSibling = (node) => {
   if (parent === null ) {
     return null;
   }
-  const sibling = parent._children;
-  const idx = sibling.indexOf(node);
+  const siblings = parent._children;
+  const idx = siblings.indexOf(node);
   if (idx < 0 || idx >= siblings.length - 1) {
     return null;
   }
-  return sibling[idx + 1];
+  return siblings[idx + 1];
+};
+
+const getCurLoop = (ctx) => {
+  if(!ctx.loops.length) {
+    return null;
+  }
+  return ctx.loops[ctx.loops.length - 1];
+}
+
+
+const isLoopExploring = (ctx) => {
+  const curLoop = getCurLoop(ctx);
+  return curLoop != null && curLoop.idx < 0;
+};
+
+const logLoop = (loops) => {
+  if (!loops.length) return;
+  const level = loops.length - 1;
+  const { varName, idx, loopOver, isIf } = loops[level];
+  const idxStr = idx >= 0 ? idx + 1 : 'EXPLORATION';
+  logger.debug(
+    `${isIf ? 'IF' : 'FOR'} loop ` +
+      `on ${level}:${varName}` +
+      `${idxStr}/${loopOver.length}`
+  );
 };
 
 export {
   getNextSibling,
-  insertTextSiblingAfter
+  insertTextSiblingAfter,
+  getCurLoop,
+  isLoopExploring,
+  logLoop
 };

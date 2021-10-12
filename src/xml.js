@@ -13,7 +13,7 @@ const parseXml = (templateXml) => {
   return new Promise((resolve, reject) => {
     parser.onopentag = (node) => {
       const newNode = {
-        _parent: curNode || undefined,
+        _parent: curNode || null,
         _children: [],
         _fTextNode: false,
         _tag: node.name,
