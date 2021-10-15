@@ -6,7 +6,7 @@
   "module": "dist/docgen.esm.js",
   "browser": "dist/docgen.umd.js",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -23,9 +23,11 @@
     "@babel/core": "^7.15.8",
     "@babel/plugin-transform-runtime": "^7.15.8",
     "@babel/preset-env": "^7.15.8",
+    "@rollup/plugin-json": "^4.1.0",
     "rollup": "^2.58.0",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-builtins": "^2.1.2",
     "rollup-plugin-node-resolve": "^5.2.0"
   },
   "files": [
@@ -33,9 +35,14 @@
     "src"
   ],
   "dependencies": {
+    "color-name": "^1.1.4",
+    "escape-html": "^1.0.3",
+    "html-to-vdom": "^0.7.0",
     "isomorphic-fetch": "^3.0.0",
     "jszip": "^3.7.1",
     "sax": "^1.2.4",
-    "timm": "^1.7.1"
+    "timm": "^1.7.1",
+    "virtual-dom": "^2.1.1",
+    "xmlbuilder2": "^3.0.2"
   }
 }

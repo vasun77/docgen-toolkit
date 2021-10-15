@@ -1,4 +1,5 @@
 import sax from 'sax';
+import { cloneNodeForLogging } from './reportUtils';
 import { logger } from "./debug";
 
 const parseXml = (templateXml) => {
@@ -57,6 +58,66 @@ const parseXml = (templateXml) => {
     parser.write(templateXml);
     parser.end();
   });
-}
+};
 
-export { parseXml };
+const buildXml = (node, options, indent = '') => {
+  let xml = indent.length ? '' : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+   
+  //logger.debug(`buildXml ${indent}...`,{
+  //  attach: cloneNodeForLogging(node)
+  //});
+
+  if (node._fTextNode) {
+    xml += sanitizeText(node._text, options);
+  } else {
+    let attrs = '';
+    const nodeAttrs = node._attrs;
+    Object.keys(nodeAttrs).forEach(key => {
+      attrs += ` ${key}="${sanitizeAttr(nodeAttrs[key])}"`;
+    });
+    const fHasChildren = node._children.length > 0;
+    const suffix = fHasChildren ? '' : '/';
+    xml += `\n${indent}<$<{node._tag}${attrs}${suffix}>`;
+    let fLastChildIsNode = false;
+    node._children.forEach(child => {
+      xml += buildXml(child, options, `${indent} `);
+      fLastChildIsNode = !child._fTextNode;
+    });
+    if (fHasChildren) {
+      const indent2 = fLastChildIsNode ? `\n${indent}` : '';
+      xml += `${indent2}</${node._tag}>`;
+    }
+  }
+  return xml;
+};
+
+const sanitizeText = (str, options) => {
+  logger.debug(`SanitizeText str => ${str}, and options => ${options}`);
+  let out = '';
+  const segments = str.split(options.literalXmlDelimiter);
+  let fLiteral = false;
+  for (let i = 0; i < segments.length; i++) {
+    let processedSegment = segments[i];
+    if (!fLiteral) {
+      processedSegment = processedSegment.replace(/&/g, '&amp;'); // must be the first one
+      processedSegment = processedSegment.replace(/</g, '&lt;');
+      processedSegment = processedSegment.replace(/>/g, '&gt;');
+    }
+    out += processedSegment;
+    fLiteral = !fLiteral;
+  }
+  return out;
+};
+
+const sanitizeAttr = (attr) => {
+  let out = typeof attr === 'string' ? attr : attr.value;
+  out = out.replace(/&/g, '&amp;'); // must be the first one
+  out = out.replace(/</g, '&lt;');
+  out = out.replace(/>/g, '&gt;');
+  out = out.replace(/'/g, '&apos;');
+  out = out.replace(/"/g, '&quot;');
+  return out;
+};
+
+
+export { parseXml, buildXml };

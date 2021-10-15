@@ -1,7 +1,8 @@
-import { getNextSibling, getCurLoop, logLoop, isLoopExploring } from './reportUtils';
+import { getNextSibling, getCurLoop, logLoop, isLoopExploring, cloneNodeWithoutChildren, cloneNodeForLogging } from './reportUtils';
 import { runUserJsAndGetRaw } from './jsSandbox';
 import { logger } from './debug';
 import { BUILT_IN_COMMANDS } from './constants';
+import convertHtml from './convertHtml';
 
 export function newContext(options, imageId = 0) {
   return {
@@ -69,57 +70,10 @@ export async function extractQuery(template, createOptions) {
   return ctx.query;
 }
 
-const processText = async (data, node, ctx, onCommand) => {
-  const { cmdDelimiter, failFast } = ctx.options;
-  const text = node._text;
-  if (text == null || text === '') return '';
-  const segments = text
-    .split(cmdDelimiter[0])
-    .map(s => s.split(cmdDelimiter[1]))
-    .reduce((x, y) => x.concat(y));
-  let outText = '';
-  const errors = [];
-  for (let idx = 0; idx < segments.length; idx++) {
-    // Include the separators in the `buffers` field (used for deleting paragraphs if appropriate)
-    if (idx > 0) appendTextToTagBuffers(cmdDelimiter[0], ctx, { fCmd: true });
-
-    // Append segment either to the `ctx.cmd` buffer (to be executed), if we are in "command mode",
-    // or to the output text
-    const segment = segments[idx];
-    // logger.debug(`Token: '${segment}' (${ctx.fCmd})`);
-    if (ctx.fCmd) ctx.cmd += segment;
-    else if (!isLoopExploring(ctx)) outText += segment;
-    appendTextToTagBuffers(segment, ctx, { fCmd: ctx.fCmd });
-
-    // If there are more segments, execute the command (if we are in "command mode"),
-    // and toggle "command mode"
-    if (idx < segments.length - 1) {
-      if (ctx.fCmd) {
-        const cmdResultText = await onCommand(data, node, ctx);
-        if (cmdResultText != null) {
-          if (typeof cmdResultText === 'string') {
-            outText += cmdResultText;
-            appendTextToTagBuffers(cmdResultText, ctx, {
-              fCmd: false,
-              fInsertedText: true,
-            });
-          } else {
-            if (failFast) throw cmdResultText;
-            errors.push(cmdResultText);
-          }
-        }
-      }
-      ctx.fCmd = !ctx.fCmd;
-    }
-  }
-  if (errors.length > 0) return errors;
-  return outText;
-};
-
 const processForIf = async(data, node, ctx, cmd, cmdName, cmdRest) => {
-  const isIF = cmdName === 'IF';
+  const isIf = cmdName === 'IF';
   // Identify FOR/IF loop
-  let forMatch;
+  let forMatch; 
   let varName;
   if (isIf) {
     if (!node._ifName) {
@@ -302,6 +256,15 @@ const processCmd = async (data, node, ctx) => {
             throw nerr;
           }
         }
+        //check string for html
+        const isHTML = RegExp.prototype.test.bind(/(<([^>]+)>)/i)
+        if(isHTML(result)) {
+          let convertedHtml = convertHtml(result)
+          logger.debug('****************************************************************************************************');
+          logger.debug(convertHtml(result));
+          logger.debug('****************************************************************************************************');
+          return convertedHtml;
+        }
 
         // If the `processLineBreaks` flag is set,
         // newlines are replaced with a `w:br` tag (protected by
@@ -369,6 +332,328 @@ export async function produceJsReport(data, template, ctx) {
 }
 
 export async function walkTemplate(data, template, ctx, processor) {
-  //TODO
-  // walk the template
+
+  const out = cloneNodeWithoutChildren(template);
+  let nodeIn = template;
+  let nodeOut = out;
+  let move;
+  let deltaJump = 0;
+  const errors = [];
+
+  while (true) {
+    const curLoop = getCurLoop(ctx);
+    let nextSibling;
+
+    if (ctx.fJump) {
+      if (!curLoop) {
+        throw new Error (`Jumping while curLooping is null`);
+      }
+      const { refNode, refNodeLevel } = curLoop;
+      
+      logger.debug(`Jumping to level ${refNodeLevel}...`,{
+        attach: cloneNodeForLogging(refNode)
+      });
+      deltaJump = ctx.level - refNodeLevel;
+      nodeIn = refNode;
+      ctx.level = refNodeLevel;
+      ctx.fJump = false;
+      move = 'JUMP';
+
+      // Down (only if he haven't just moved up)
+    } else if (nodeIn._children.length && move !== 'UP') {
+      nodeIn = nodeIn._children[0];
+      ctx.level += 1;
+      move = 'DOWN';
+
+      //Sideways
+    } else if (nextSibling = getNextSibling(nodeIn)) {
+      nodeIn = nextSibling;
+      move = 'SIDE';
+
+      // UP
+    } else {
+      const parent = nodeIn._parent;
+      if (parent === null) {
+        break; 
+      }
+      nodeIn = parent;
+      ctx.level -= 1;
+      move = 'UP';
+    }
+
+    /*
+    * Process input node
+    * Delete the last generated output node in several special cases
+    */
+    if (move !== 'DOWN') {
+      const tag = nodeOut._fTextNode ? null : nodeOut._tag;
+      let fRemoveNode = false;
+      // delete last generated output node if we're skipping nodes due to an empty FOR loop
+      if ((tag === 'w:p' || tag === 'w:tbl' || tag === 'w:tr') && isLoopExploring(ctx)) {
+        fRemoveNode = true;
+        //delete last generated output node if the user inserted a paragraph
+        // (or table row) with just a command
+      } else if (tag === 'w:p' || tag === 'w:tr') {
+        const buffers = ctx.buffers[tag];
+        fRemoveNode = buffers.text === '' && buffers.cmds !== '' && !buffers.fInsertedText;
+      }
+      // Execute removal, if needed. The node will no longer be part of the output, but
+      // the parent will be accessible from the child (so that we can still move up the tree)
+      if (fRemoveNode && nodeOut._parent !== null) {
+        nodeOut._parent._children.pop();
+      }
+    }
+
+    //Handle an UP movement
+    if (move === 'UP') {
+      // Loop exploring? Update the reference node for the current loop
+      if (
+        isLoopExploring(ctx) &&
+        curLoop && // Flow, don't complain
+        nodeIn === curLoop.refNode._parent
+      ) {
+        curLoop.refNode = nodeIn;
+        curLoop.refNodeLevel -= 1;
+      }
+      const nodeOutParent = nodeOut._parent;
+      if (nodeOutParent == null) throw new InternalError('node parent is null');
+      
+      // Execute the move in the output tree
+      nodeOut = nodeOutParent;
+      
+      // If an image was generated, replace the parent `w:t` node with
+      // the image node
+      if (
+        ctx.pendingImageNode &&
+        !nodeOut._fTextNode && // Flow-prevention
+        nodeOut._tag === 'w:t'
+      ) {
+        const imgNode = ctx.pendingImageNode;
+        const parent = nodeOut._parent;
+        if (parent) {
+          imgNode._parent = parent;
+          parent._children.pop();
+          parent._children.push(imgNode);
+          // Prevent containing paragraph or table row from being removed
+          ctx.buffers['w:p'].fInsertedText = true;
+          ctx.buffers['w:tr'].fInsertedText = true;
+        }
+        delete ctx.pendingImageNode;
+      }
+      
+      // If a link was generated, replace the parent `w:r` node with
+      // the link node
+      if (
+        ctx.pendingLinkNode &&
+        !nodeOut._fTextNode && // Flow-prevention
+        nodeOut._tag === 'w:r'
+      ) {
+        const linkNode = ctx.pendingLinkNode;
+        const parent = nodeOut._parent;
+        if (parent) {
+          linkNode._parent = parent;
+          parent._children.pop();
+          parent._children.push(linkNode);
+          // Prevent containing paragraph or table row from being removed
+          ctx.buffers['w:p'].fInsertedText = true;
+          ctx.buffers['w:tr'].fInsertedText = true;
+        }
+        delete ctx.pendingLinkNode;
+      }
+      
+      // If a html page was generated, replace the parent `w:p` node with
+      // the html node
+      if (
+        ctx.pendingHtmlNode &&
+        !nodeOut._fTextNode && // Flow-prevention
+        nodeOut._tag === 'w:p'
+      ) {
+        const htmlNode = ctx.pendingHtmlNode;
+        const parent = nodeOut._parent;
+        if (parent) {
+          htmlNode._parent = parent;
+          parent._children.pop();
+          parent._children.push(htmlNode);
+          // Prevent containing paragraph or table row from being removed
+          ctx.buffers['w:p'].fInsertedText = true;
+          ctx.buffers['w:tr'].fInsertedText = true;
+        }
+        delete ctx.pendingHtmlNode;
+      }
+      
+      // `w:tc` nodes shouldn't be left with no `w:p` or 'w:altChunk' children; if that's the
+      // case, add an empty `w:p` inside
+      if (
+        !nodeOut._fTextNode && // Flow-prevention
+        nodeOut._tag === 'w:tc' &&
+        !nodeOut._children.filter(
+          o => !o._fTextNode && (o._tag === 'w:p' || o._tag === 'w:altChunk')
+        ).length
+      ) {
+        nodeOut._children.push({
+          _parent: nodeOut,
+          _children: [],
+          _fTextNode: false,
+          _tag: 'w:p',
+          _attrs: {},
+        });
+      }
+      
+      // Save latest `w:rPr` node that was visited (for LINK properties)
+      if (!nodeOut._fTextNode && nodeOut._tag === 'w:rPr') {
+        ctx.textRunPropsNode = nodeOut;
+      }
+      if (!nodeIn._fTextNode && nodeIn._tag === 'w:r') {
+        delete ctx.textRunPropsNode;
+      }
+    }
+
+    // Node creation: DOWN | SIDE
+    // --------------------------
+    // Note that nodes are copied to the new tree, but that doesn't mean they will be kept.
+    // In some cases, they will be removed later on; for example, when a paragraph only
+    // contained a command -- it will be deleted.
+    if (move === 'DOWN' || move === 'SIDE') {
+      // Move nodeOut to point to the new node's parent
+      if (move === 'SIDE') {
+        if (nodeOut._parent == null)
+          throw new Error('node parent is null');
+        nodeOut = nodeOut._parent;
+      }
+
+      // Reset node buffers as needed if a `w:p` or `w:tr` is encountered
+      const tag = nodeIn._fTextNode ? null : nodeIn._tag;
+      if (tag === 'w:p' || tag === 'w:tr') {
+        ctx.buffers[tag] = { text: '', cmds: '', fInsertedText: false };
+      }
+
+      // Clone input node and append to output tree
+      const newNode = cloneNodeWithoutChildren(nodeIn);
+      newNode._parent = nodeOut;
+      nodeOut._children.push(newNode);
+      const parent = nodeIn._parent;
+
+      // If it's a text node inside a w:t, process it
+      if (
+        nodeIn._fTextNode &&
+        parent &&
+        !parent._fTextNode &&
+        parent._tag === 'w:t'
+      ) {
+        const result = await processText(data, nodeIn, ctx, processor);
+        if (typeof result === 'string') {
+          // TODO: use a discriminated union here instead of a type assertion to distinguish TextNodes from NonTextNodes.
+          const newNodeAsTextNode = newNode;
+          newNodeAsTextNode._text = result;
+        } else {
+          errors.push(...result);
+        }
+      }
+
+      // Execute the move in the output tree
+      nodeOut = newNode;
+    }
+
+    // Correct output tree level in case of a JUMP
+    // -------------------------------------------
+    if (move === 'JUMP') {
+      while (deltaJump > 0) {
+        if (nodeOut._parent == null)
+          throw new Error('node parent is null');
+        nodeOut = nodeOut._parent;
+        deltaJump -= 1;
+      }
+    }
+  }
+
+  if (errors.length) {
+    return {
+      status: 'errors',
+      errors
+    };
+  }
+
+  return {
+    status: 'success',
+    report: out,
+    images: ctx.images,
+    links: ctx.links,
+    htmls: ctx.html,
+  };
+};
+
+const processText = async (data, node, ctx, onCommand) => {
+  const { cmdDelimiter, failFast } = ctx.options;
+  const text = node._text;
+  if (text === null || text === '') {
+    return '';
+  }
+  const segments = text.split(cmdDelimiter[0])
+                      .map(s => s.split(cmdDelimiter[1]))
+                      .reduce((x, y) => x.concat(y));
+
+  let outText = '';
+  const errors = [];
+  for (let idx = 0; idx < segments.length; idx++) {
+    // Include the separators in the `buffers` field (used fro deleted paragraphs if appropriate)
+    if (idx > 0) {
+      appendTextToTagBuffers(cmdDelimiter[0], ctx, {fCmd: true});
+    }
+    // Append segment either to the `ctx.cmd` buffer (to be executed), if we are in "command mode",
+    // or to the output text
+    const segment = segments[idx];
+    // logger.debug(`Token: '${segment}' (${ctx.fCmd})`);
+    if (ctx.fCmd) {
+      ctx.cmd += segment;
+    } else if (!isLoopExploring(ctx)) {
+      outText += segment;
+    }
+    appendTextToTagBuffers(segment, ctx, { fCmd: ctx.fCmd });
+
+    // If there are more segments, execute the command (if we are in "command mode"),
+    // and toggle "command mode"
+    if (idx < segments.length - 1) {
+      if (ctx.fCmd) {
+        const cmdResultText = await onCommand(data, node, ctx);
+        if (cmdResultText != null) {
+          if (typeof cmdResultText === 'string') {
+            outText += cmdResultText;
+            appendTextToTagBuffers(cmdResultText, ctx, {
+              fCmd: false,
+              fInsertedText: true,
+            });
+          } else {
+            if (failFast) throw cmdResultText;
+            errors.push(cmdResultText);
+          }
+        }
+      }
+      ctx.fCmd = !ctx.fCmd;
+    }
+  }
+  if (errors.length) {
+    return errors;
+  }
+  return outText;
+}
+
+export function findHighestImgId(mainDoc) {
+  const doc_ids = [];
+  const search = (n) => {
+    for (const c of n._children) {
+      const tag = c._fTextNode ? null : c._tag;
+      if (tag == null) continue;
+      if (tag === 'wp:docPr') {
+        if (c._fTextNode) continue;
+        const raw = c._attrs.id;
+        if (typeof raw !== 'string') continue;
+        const id = Number.parseInt(raw, 10);
+        if (Number.isSafeInteger(id)) doc_ids.push(id);
+      }
+      if (c._children.length > 0) search(c);
+    }
+  };
+  search(mainDoc);
+  if (doc_ids.length > 0) return Math.max(...doc_ids);
+  return 0;
 }

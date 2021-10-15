@@ -1,3 +1,6 @@
+import { omit } from 'timm';
+import { logger } from "./debug";
+
 const cloneNodeWithoutChildren = (node) => { 
   if (node._fTextNode) {
     return {
@@ -8,24 +11,26 @@ const cloneNodeWithoutChildren = (node) => {
   }
   return {
     _children: [],
-    _fTextNode: true,
+    _fTextNode: false,
     _tag: node._tag,
     _attrs: node._attrs,
   };
 };
 
+const cloneNodeForLogging = (node) => omit(node, ['_parent', '_childrend']);
+
 const insertTextSiblingAfter = (textNode) => {
   const tNode = textNode._parent;
   if (!(tNode && !tNode._fTextNode && tNode._tag === 'w:t')) {
-    throw console.error ('Template syntax error: text not within w:t');
+    throw new Error('Template syntax error: text not within w:t');
   }
   const tNodeParent = tNode._parent;
   if (tNodeParent === null) {
-    throw console.error ('Template syntax error: w:t node has no parent');
+    throw new Error('Template syntax error: w:t node has no parent');
   }
   const idx = tNodeParent._children.indexOf(tNode);
   if (idx < 0) {
-    throw console.error ('Template syntax error');
+    throw new Error('Template syntax error');
   }
   const newTNode = cloneNodeWithoutChildren(tNode);
   newTNode._parent = tNodeParent;
@@ -73,12 +78,14 @@ const logLoop = (loops) => {
   const idxStr = idx >= 0 ? idx + 1 : 'EXPLORATION';
   logger.debug(
     `${isIf ? 'IF' : 'FOR'} loop ` +
-      `on ${level}:${varName}` +
+      `on ${level} : ${varName} ` +
       `${idxStr}/${loopOver.length}`
   );
 };
 
 export {
+  cloneNodeWithoutChildren,
+  cloneNodeForLogging,
   getNextSibling,
   insertTextSiblingAfter,
   getCurLoop,

@@ -1,6 +1,6 @@
 import { zipLoad, zipGetText } from './zip';
 import { logger } from './debug';
-import { extractQuery, produceJsReport } from './processTemplate';
+import { extractQuery, produceJsReport, findHighestImgId, newContext } from './processTemplate';
 
 
 import { 
@@ -10,7 +10,7 @@ import {
     DEFAULT_CMD_DELIMITER,
     XML_FILE_REGEX
  } from './constants';
-import { parseXml } from './xml';
+import { parseXml, buildXml } from './xml';
 import preprocessTemplate from './preprocessTemplate';
 
 async function parsePath(zip, xml_path) {
@@ -87,7 +87,7 @@ async function parseTemplate(template) {
     };
 }
 
-async function createReport (options) {
+async function createReport (options,_probe) {
     logger.debug('Create Report...');
     const { data, template, queryVars} = options;
     const literalXmlDelimiter = options.literalXmlDelimiter || DEFAULT_LITERAL_XML_DELIMITER;
@@ -103,6 +103,7 @@ async function createReport (options) {
         errorHandler: typeof options.errorHandler === 'function' ? options.errorHandler : null,
         fixSmartQuotes: options.fixSmartQuotes == null ? false : options.fixSmartQuotes,
     };
+    const xmlOptions = { literalXmlDelimiter };
     const { jsTemplate, mainDocument, zip, contentTypes } = await parseTemplate(
         template
     );
@@ -146,7 +147,22 @@ async function createReport (options) {
     if (result.status === 'errors') {
         throw result.errors;
     }
-    logger.debug(`Generated report => ${JSON.stringify(result)}`)
+    const {
+        report: report1,
+        images: images1,
+        links: links1,
+        htmls: htmls1
+    } = result;
+
+    if (_probe === 'JS') {
+        return report1;
+    }
+
+    logger.debug(`Converting report to XML....`)
+    const reportXml = buildXml(report1, xmlOptions);
+    if (_probe === 'XML') {
+        return reportXml;
+    }
 
 }
 

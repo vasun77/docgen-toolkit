@@ -7,27 +7,7 @@ const data = {
     "allFilms": {
         "films": [
           {
-            "title": "A New Hope",
-            "releaseDate": "1977-05-25"
-          },
-          {
-            "title": "The Empire Strikes Back",
-            "releaseDate": "1980-05-17"
-          },
-          {
-            "title": "Return of the Jedi",
-            "releaseDate": "1983-05-25"
-          },
-          {
-            "title": "The Phantom Menace",
-            "releaseDate": "1999-05-19"
-          },
-          {
-            "title": "Attack of the Clones",
-            "releaseDate": "2002-05-16"
-          },
-          {
-            "title": "Revenge of the Sith",
+            "title": "<strong>Revenge of the Sith</strong>",
             "releaseDate": "2005-05-19"
           }
         ]
@@ -35,7 +15,8 @@ const data = {
 };
 createReport({
     template,
-    /*data,*/
+    data,
+    /*
     data: (query) =>
         fetch('http://swapi.apis.guru', {
             method: 'POST',
@@ -47,6 +28,7 @@ createReport({
         })
         .then(res => res.json())
         .then(res => res.data),
+        */
 }).then(
     rendered => fs.writeFileSync(
         process.argv.length > 3 ? process.argv[3] : null,
