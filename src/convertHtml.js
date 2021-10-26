@@ -135,8 +135,12 @@ const convertHtml = (htmlStr) =>  {
 
   const populatedXmlFragment = convertVTreeToXML(vTree, xmlFragment);
   const doc = create().import(populatedXmlFragment);
-  return doc.end({prettyPrint: false});
-
+  let prepXML = doc.end({prettyPrint: true});
+  let finalXML = prepXML.replace(
+    `<?xml version="1.0"?>`,
+    ''
+  );
+  return finalXML;
 }
 
 export default convertHtml;

@@ -12,4 +12,15 @@ const zipGetText = (zip, filename) => {
 
 }
 
-export {zipLoad, zipGetText };
+const zipSetText = (zip, filename, data) => {
+  zip.file(filename, data);
+}
+
+const zipSave = (zip) =>
+  zip.generateAsync({
+    type: 'uint8array',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 1 },
+  });
+
+export {zipLoad, zipGetText, zipSetText, zipSave };

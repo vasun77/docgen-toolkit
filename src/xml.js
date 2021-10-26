@@ -77,7 +77,7 @@ const buildXml = (node, options, indent = '') => {
     });
     const fHasChildren = node._children.length > 0;
     const suffix = fHasChildren ? '' : '/';
-    xml += `\n${indent}<$<{node._tag}${attrs}${suffix}>`;
+    xml += `\n${indent}<${node._tag}${attrs}${suffix}>`;
     let fLastChildIsNode = false;
     node._children.forEach(child => {
       xml += buildXml(child, options, `${indent} `);
@@ -92,7 +92,7 @@ const buildXml = (node, options, indent = '') => {
 };
 
 const sanitizeText = (str, options) => {
-  logger.debug(`SanitizeText str => ${str}, and options => ${options}`);
+  logger.debug(`SanitizeText str => ${str}, and options => ${JSON.stringify(options)}`);
   let out = '';
   const segments = str.split(options.literalXmlDelimiter);
   let fLiteral = false;
@@ -106,6 +106,9 @@ const sanitizeText = (str, options) => {
     out += processedSegment;
     fLiteral = !fLiteral;
   }
+  if (segments.length > 2) {
+    out = processLiteralXml(out)
+  }
   return out;
 };
 
@@ -118,6 +121,12 @@ const sanitizeAttr = (attr) => {
   out = out.replace(/"/g, '&quot;');
   return out;
 };
+
+const processLiteralXml = (str) => {
+  let base = `</w:t></w:r></w:p>`;
+  let out = `<w:p><w:r><w:t>`;
+  return `${base}${str}${out}`;
+}
 
 
 export { parseXml, buildXml };

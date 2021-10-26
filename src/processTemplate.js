@@ -259,11 +259,9 @@ const processCmd = async (data, node, ctx) => {
         //check string for html
         const isHTML = RegExp.prototype.test.bind(/(<([^>]+)>)/i)
         if(isHTML(result)) {
-          let convertedHtml = convertHtml(result)
-          logger.debug('****************************************************************************************************');
-          logger.debug(convertHtml(result));
-          logger.debug('****************************************************************************************************');
-          return convertedHtml;
+          const { literalXmlDelimiter } = ctx.options;
+          result = convertHtml(result)
+          return `${literalXmlDelimiter}${result}${literalXmlDelimiter}`;
         }
 
         // If the `processLineBreaks` flag is set,
@@ -578,7 +576,7 @@ export async function walkTemplate(data, template, ctx, processor) {
     report: out,
     images: ctx.images,
     links: ctx.links,
-    htmls: ctx.html,
+    htmls: ctx.htmls,
   };
 };
 
