@@ -9,7 +9,6 @@ export default [
     {
         input: "src/index.js",
         external: [ 'color-name', 'escape-html', 'html-to-vdom', 'jszip', 'virtual-dom', 'xmlbuilder2', '@babel', 'sax', 'timm'],
-        internal: ['vm'],
         output: {
             name: 'docgen-toolkit',
             file: pkg.browser,
@@ -34,7 +33,8 @@ export default [
             builtins(),
             babel({
                 exclude: ["node_modules/**"],
-                runtimeHelpers: true
+                runtimeHelpers: true,
+                externalHelpers: false
             })
         ],
     },
@@ -48,7 +48,8 @@ export default [
         plugins: [
             babel({
                 exclude: ["node_modules/**"],
-                runtimeHelpers: true
+                runtimeHelpers: true,
+                externalHelpers: false
             }),
         ],
     },
