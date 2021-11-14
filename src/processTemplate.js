@@ -1,4 +1,5 @@
-import { getNextSibling, getCurLoop, logLoop, isLoopExploring, cloneNodeWithoutChildren, cloneNodeForLogging } from './reportUtils';
+import { omit } from 'timm';
+import { getNextSibling, getCurLoop, logLoop, isLoopExploring, cloneNodeWithoutChildren, cloneNodeForLogging, createNewNode } from './reportUtils';
 import { runUserJsAndGetRaw } from './jsSandbox';
 import { logger } from './debug';
 import { BUILT_IN_COMMANDS } from './constants';
@@ -255,13 +256,6 @@ const processCmd = async (data, node, ctx) => {
           } else {
             throw nerr;
           }
-        }
-        //check string for html
-        const isHTML = RegExp.prototype.test.bind(/(<([^>]+)>)/i)
-        if(isHTML(result)) {
-          const { literalXmlDelimiter } = ctx.options;
-          result = convertHtml(result)
-          return `${literalXmlDelimiter}${result}${literalXmlDelimiter}`;
         }
 
         // If the `processLineBreaks` flag is set,
@@ -541,8 +535,17 @@ export async function walkTemplate(data, template, ctx, processor) {
         const result = await processText(data, nodeIn, ctx, processor);
         if (typeof result === 'string') {
           // TODO: use a discriminated union here instead of a type assertion to distinguish TextNodes from NonTextNodes.
-          const newNodeAsTextNode = newNode;
-          newNodeAsTextNode._text = result;
+
+          //check string for html
+          const isHTML = RegExp.prototype.test.bind(/(<([^>]+)>)/i);
+          if (isHTML(result)) {
+            const { literalXmlDelimiter }  = ctx.options;
+            let xml = convertHtml(result);
+            nodeOut._parent = updateNodeWithHtmlData(nodeOut._parent, xml);
+          } else {
+            const newNodeAsTextNode = newNode;
+            newNodeAsTextNode._text = result;
+          }
         } else {
           errors.push(...result);
         }
@@ -579,6 +582,97 @@ export async function walkTemplate(data, template, ctx, processor) {
     htmls: ctx.htmls,
   };
 };
+
+const updateNodeWithHtmlData = (node, result) => {
+  let parent = node._parent;
+  let resultProps = result['p'];
+  logger.debug(`check total number of sibs`, parent._children.length,` and parent tag`, parent._tag);
+  for (let i =0; i < parent._children.length; i++) {
+    logger.debug(`child number ${i} and tag is ${parent._children[i]._tag}`);
+    logger.debug(`checking inside of node =>`, cloneNodeForLogging(parent._children[i]));
+    if (parent._children[i]._tag === 'w:r') {
+      let wrChild = parent._children[i];
+      for(let j = 0; j < wrChild._children.length; j++) {
+        if (wrChild._children[i]._tag === 'w:t') {
+          let wtChild = wrChild._children[i]._children[0];
+          if (wtChild._fTextNode && !wtChild._text) {
+            parent._children.splice(i, 1);
+          }
+        }
+      }
+    }
+  }
+
+  logger.debug('Total number childrens this parent parent has', parent._parent._children.length);
+  logger.debug('Tag of this parent parent is', parent._parent._tag);
+  logger.debug(`result properties => ${JSON.stringify(resultProps)}`);
+
+  parent._parent._children.pop();
+  let store = [];
+  if (resultProps && !Array.isArray(resultProps)) {
+    resultProps = [resultProps];
+  }
+
+  resultProps.forEach((item) => {
+    let newNode = cloneNodeWithoutChildren(parent);
+    newNode._children = parent._children.map((el) => cloneNodeWithoutChildren(el));
+    let paraProps = Object.keys(omit(item, ['@xmlns', 'pPr']));
+    paraProps.forEach((props) => {
+      logger.debug('************************** new paragraph ***********************');
+      if (props === 'r') {
+        let wrChildProps = item['r'];
+        let originalWrChildIndex = parent._children.findIndex((i) => i._tag === 'w:r')
+        let originalWrNode = {...parent._children[originalWrChildIndex]};
+        if (wrChildProps && !Array.isArray(wrChildProps)) {
+          wrChildProps = [wrChildProps];
+        }
+        wrChildProps.forEach((child) => {
+          logger.debug('&&&&&&&&&&&&&&&&&&&&& New runner &&&&&&&&&&&&&&&&&&&&&');
+          let runner = cloneNodeWithoutChildren(originalWrNode);
+          let childProps = Object.keys(child);
+          runner._children = originalWrNode._children.map((el) => cloneNodeWithoutChildren(el));
+          childProps.forEach((wrItems) => {
+            let keys = Object.keys(child[wrItems]);
+            switch(wrItems) {
+              case 'rPr':
+                let rPrIndex = originalWrNode._children.findIndex((i) => i._tag === 'w:rPr');
+                let rPrData = originalWrNode._children[rPrIndex];
+                runner._children[rPrIndex]._children = rPrData._children.map((el) => cloneNodeWithoutChildren(el));
+                if (!keys || !keys.length) {
+                  return;
+                }
+                keys.forEach(el => {
+                  let tagIndex = rPrData._children.findIndex((i) => i._tag === `w:${el}`);
+                  if (tagIndex < 0) {
+                    runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`,false, {}));
+                  } else if (tagIndex >= 0 && rPrData._children[tagIndex]._tag === `w:${el}` &&
+                    rPrData._children[tagIndex]._attrs &&
+                    rPrData._children[tagIndex]._attrs['w:val'] === 'false') {
+                      runner._children[rPrIndex]._children.splice(tagIndex, 1);
+                      runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`, false, {}));
+                  }
+                });
+                break;
+              case 't':
+                let tIndex = originalWrNode._children.findIndex((item) => item._tag === 'w:t');
+                runner._children[tIndex]._children = originalWrNode._children[tIndex]._children.map((el) => Object.assign({}, el));
+                runner._children[tIndex]._children[0]._text = child[wrItems]['#'];
+                break;
+              default:
+                break;
+            }
+          });
+          newNode._children.push(runner);
+          logger.debug('&&&&&&&&&&&&&&&&& End of New runner &&&&&&&&&&&&&&&&&&');
+
+        });
+      }
+      logger.debug('********************* End of new paragraph *********************');
+    });
+    parent._parent._children.push(Object.assign({}, newNode));
+  });
+  return node;
+}
 
 const processText = async (data, node, ctx, onCommand) => {
   const { cmdDelimiter, failFast } = ctx.options;

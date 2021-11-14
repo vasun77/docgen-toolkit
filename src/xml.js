@@ -92,7 +92,7 @@ const buildXml = (node, options, indent = '') => {
 };
 
 const sanitizeText = (str, options) => {
-  logger.debug(`SanitizeText str => ${str}, and options => ${JSON.stringify(options)}`);
+  //logger.debug(`SanitizeText str => ${str}, and options => ${JSON.stringify(options)}`);
   let out = '';
   const segments = str.split(options.literalXmlDelimiter);
   let fLiteral = false;

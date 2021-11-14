@@ -83,6 +83,24 @@ const logLoop = (loops) => {
   );
 };
 
+const createNewNode = (tag, isTextNode, attrs, text) => {
+  if (isTextNode) {
+    return {
+      _children: [],
+      _fTextNode: true,
+      _attrs: attrs,
+      _text: text,
+      _tag: tag
+    }
+  }
+  return {
+      _children: [],
+      _fTextNode: false,
+      _attrs: attrs,
+      _tag: tag
+  }
+}
+
 export {
   cloneNodeWithoutChildren,
   cloneNodeForLogging,
@@ -90,5 +108,6 @@ export {
   insertTextSiblingAfter,
   getCurLoop,
   isLoopExploring,
-  logLoop
+  logLoop,
+  createNewNode
 };
