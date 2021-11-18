@@ -593,8 +593,8 @@ const updateNodeWithHtmlData = (node, result) => {
     if (parent._children[i]._tag === 'w:r') {
       let wrChild = parent._children[i];
       for(let j = 0; j < wrChild._children.length; j++) {
-        if (wrChild._children[i]._tag === 'w:t') {
-          let wtChild = wrChild._children[i]._children[0];
+        if (wrChild._children[j]._tag === 'w:t') {
+          let wtChild = wrChild._children[j]._children[0];
           if (wtChild._fTextNode && !wtChild._text) {
             parent._children.splice(i, 1);
           }
