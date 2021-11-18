@@ -1,4 +1,4 @@
-import { fragment, create } from "xmlbuilder2";
+import { fragment } from "xmlbuilder2";
 import VNode from "virtual-dom/vnode/vnode";
 import VText from "virtual-dom/vnode/vtext";
 import isVNode from "virtual-dom/vnode/is-vnode";
@@ -6,7 +6,6 @@ import isVText from "virtual-dom/vnode/is-vtext";
 import escape from 'escape-html';
 import * as xmlBuilder from './htmlToXmlBuilder';
 import namespaces from "./xmlNamespaces";
-import { logger } from "./debug";
 
 
 //const HTMLToVDOM = HTMLToVDOM_;
