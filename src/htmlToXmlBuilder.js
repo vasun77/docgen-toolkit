@@ -545,11 +545,15 @@ const buildRunOrRuns = (vNode, attributes) => {
 
 const buildRunOrHyperLink = (vNode, attributes, docxDocumentInstance) => {
   if (isVNode(vNode) && vNode.tagName === 'a') {
+    // TODO need to work on creating document relations for hyperlinks
+    /*
     const relationshipId = docxDocumentInstance.createDocumentRelationships(
       docxDocumentInstance.relationshipFilename,
       'hyperlink',
       vNode.properties && vNode.properties.href ? vNode.properties.href : ''
     );
+    */
+   const relationshipId = 1; //temp solution
     const hyperlinkFragment = fragment({
       namespaceAlias: { w: namespaces.w, r: namespaces.r },
     })
@@ -1183,7 +1187,7 @@ const fixupTableCellBorder = (vNode, attributes) => {
   }
 };
 
-const buildTableCell = (vNode, attributes, rowSpanMap, columnIndex, docxDocumentInstance) => {
+const buildTableCell = (vNode, attributes, rowSpanMap, columnIndex) => {
   const tableCellFragment = fragment({
     namespaceAlias: { w: namespaces.w },
   }).ele('@w', 'tc');
@@ -1252,7 +1256,6 @@ const buildTableCell = (vNode, attributes, rowSpanMap, columnIndex, docxDocument
       const childVNode = vNode.children[index];
       if (isVNode(childVNode) && childVNode.tagName === 'img') {
         const imageFragment = buildImage(
-          docxDocumentInstance,
           childVNode,
           modifiedAttributes.maximumWidth
         );
@@ -1270,7 +1273,6 @@ const buildTableCell = (vNode, attributes, rowSpanMap, columnIndex, docxDocument
             const grandChildVNode = childVNode.children[iteratorIndex];
             if (grandChildVNode.tagName === 'img') {
               const imageFragment = buildImage(
-                docxDocumentInstance,
                 grandChildVNode,
                 modifiedAttributes.maximumWidth
               );
@@ -1284,7 +1286,6 @@ const buildTableCell = (vNode, attributes, rowSpanMap, columnIndex, docxDocument
         const paragraphFragment = buildParagraph(
           childVNode,
           modifiedAttributes,
-          docxDocumentInstance
         );
         tableCellFragment.import(paragraphFragment);
       }
@@ -1378,7 +1379,7 @@ const buildTableRowProperties = (attributes) => {
   return tableRowPropertiesFragment;
 };
 
-const buildTableRow = (vNode, attributes, rowSpanMap, docxDocumentInstance) => {
+const buildTableRow = (vNode, attributes, rowSpanMap) => {
   const tableRowFragment = fragment({
     namespaceAlias: { w: namespaces.w },
   }).ele('@w', 'tr');
@@ -1415,7 +1416,9 @@ const buildTableRow = (vNode, attributes, rowSpanMap, docxDocumentInstance) => {
     const tableColumns = vNode.children.filter((childVNode) =>
       ['td', 'th'].includes(childVNode.tagName)
     );
-    const columnWidth = docxDocumentInstance.availableDocumentSpace / tableColumns.length;
+    // check docxInstance for availableDocumentSpace
+    //const columnWidth = availableDocumentSpace / tableColumns.length;
+    const columnWidth = 100; // temp solutions
 
     for (let index = 0; index < vNode.children.length; index++) {
       const childVNode = vNode.children[index];
@@ -1437,7 +1440,6 @@ const buildTableRow = (vNode, attributes, rowSpanMap, docxDocumentInstance) => {
           { ...modifiedAttributes, maximumWidth: columnWidth },
           rowSpanMap,
           columnIndex,
-          docxDocumentInstance
         );
         columnIndex.index++;
 
@@ -1638,7 +1640,7 @@ const cssBorderParser = (borderString) => {
   return [size, stroke, color];
 };
 
-const buildTable = (vNode, attributes, docxDocumentInstance) => {
+const buildTable = (vNode, attributes) => {
   const tableFragment = fragment({
     namespaceAlias: { w: namespaces.w },
   }).ele('@w', 'tbl');
@@ -1762,7 +1764,6 @@ const buildTable = (vNode, attributes, docxDocumentInstance) => {
               grandChildVNode,
               modifiedAttributes,
               rowSpanMap,
-              docxDocumentInstance
             );
             tableFragment.import(tableRowFragment);
           }
@@ -1782,7 +1783,6 @@ const buildTable = (vNode, attributes, docxDocumentInstance) => {
               grandChildVNode,
               modifiedAttributes,
               rowSpanMap,
-              docxDocumentInstance
             );
             tableFragment.import(tableRowFragment);
           }
@@ -1796,7 +1796,6 @@ const buildTable = (vNode, attributes, docxDocumentInstance) => {
           childVNode,
           modifiedAttributes,
           rowSpanMap,
-          docxDocumentInstance
         );
         tableFragment.import(tableRowFragment);
       }
