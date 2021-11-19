@@ -1,6 +1,6 @@
 {
   "name": "docgen-toolkit",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Library to generate documents in docx and pdf with predefined template",
   "main": "dist/docgen.cjs.js",
   "module": "dist/docgen.esm.js",

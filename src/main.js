@@ -160,6 +160,9 @@ async function createReport (options,_probe) {
 
     logger.debug(`Converting report to XML....`)
     const reportXml = buildXml(report1, xmlOptions);
+    //logger.debug('************************************** final report ****************************************************');
+    //logger.debug(reportXml);
+    //logger.debug('********************************** End of final report *************************************************');
     if (_probe === 'XML') {
         return reportXml;
     }

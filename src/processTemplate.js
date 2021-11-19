@@ -616,9 +616,62 @@ const updateNodeWithHtmlData = (node, result) => {
   resultProps.forEach((item) => {
     let newNode = cloneNodeWithoutChildren(parent);
     newNode._children = parent._children.map((el) => cloneNodeWithoutChildren(el));
-    let paraProps = Object.keys(omit(item, ['@xmlns', 'pPr']));
+    let paraProps = Object.keys(omit(item, ['@xmlns']));
     paraProps.forEach((props) => {
-      logger.debug('************************** new paragraph ***********************');
+      //logger.debug('************************** new paragraph ***********************');
+      if (props === 'pPr') {
+        //paragraph properties
+        //console.log('checking para props', item['pPr']);
+        let pprChildProps = item['pPr'];
+        let originalPprChildIndex = parent._children.findIndex((i) => i._tag === 'w:pPr')
+        let originalPprNode = {...parent._children[originalPprChildIndex]};
+        //logger.debug(`original ppr node => `, originalPprNode);
+        let paraProps = cloneNodeWithoutChildren(originalPprNode);
+        paraProps._children = originalPprNode._children.map((el) => cloneNodeWithoutChildren(el));
+        // update all the children nodes
+        for (var i = 0; i < paraProps._children.length; i++) {
+          paraProps._children[i]._children = originalPprNode._children[i]._children.map((el) => cloneNodeWithoutChildren(el));
+        }
+        if (pprChildProps && !Array.isArray(pprChildProps)) {
+          pprChildProps = [pprChildProps];
+        }
+        pprChildProps.forEach((child) => {
+          //logger.debug('&&&&&&&&&&&&&&&&&&&&& New para props &&&&&&&&&&&&&&&&&&&&&');
+          //logger.debug('paraProps childrend', child);
+          let childProps = Object.keys(omit(child, ['spacing']));
+          childProps.forEach((wpprItems) => {
+            //logger.debug('chilProps for Each', wpprItems)
+            switch(wpprItems) {
+              case 'jc':
+                let jcIndex = originalPprNode._children.findIndex((i) => i._tag === 'w:jc');
+                if (jcIndex < 0) {
+                    let dataOfTags = child[wpprItems];
+                    let tagAttr = Object.keys(dataOfTags);
+                    tagAttr.forEach((ele) => {
+                      let s = ele.replace(/\d+/, (val) => "");
+                      if (s === '@ns:val') {
+                        dataOfTags['w:val'] = dataOfTags[ele];
+                        delete dataOfTags[ele];
+                      }
+                      if (s === '@xmlns:ns') {
+                        delete dataOfTags[ele]
+                      }
+                    });
+                    let attr = tagAttr.length ? {...dataOfTags} : {}
+
+                    //logger.debug('^^^^^^^^^^^^^^^ attr => ', attr);
+                    paraProps._children.push(createNewNode(`w:jc`,false, attr));
+                }
+                break;
+              default:
+                break;
+            }
+
+          });
+          //logger.debug('&&&&&&&&&&&&&&&&&&&&& end of New para props &&&&&&&&&&&&&&&&&&&&&');
+        });
+        newNode._children.push(paraProps);
+      } else 
       if (props === 'r') {
         let wrChildProps = item['r'];
         let originalWrChildIndex = parent._children.findIndex((i) => i._tag === 'w:r')
@@ -627,7 +680,7 @@ const updateNodeWithHtmlData = (node, result) => {
           wrChildProps = [wrChildProps];
         }
         wrChildProps.forEach((child) => {
-          logger.debug('&&&&&&&&&&&&&&&&&&&&& New runner &&&&&&&&&&&&&&&&&&&&&');
+          //logger.debug('&&&&&&&&&&&&&&&&&&&&& New runner &&&&&&&&&&&&&&&&&&&&&');
           let runner = cloneNodeWithoutChildren(originalWrNode);
           let childProps = Object.keys(child);
           runner._children = originalWrNode._children.map((el) => cloneNodeWithoutChildren(el));
@@ -642,7 +695,6 @@ const updateNodeWithHtmlData = (node, result) => {
                   return;
                 }
                 keys.forEach(el => {
-                  logger.debug('~~~~~~~~~~~~~~~~~~~~~~~~~ runner props', `w:${el}`);
                   let tagIndex = rPrData._children.findIndex((i) => i._tag === `w:${el}`);
                   if (tagIndex < 0) {
                     //let dataOfTags = omit(child[wrItems][el], ["@xmlns:ns1", "@xmlns:ns2", "@xmlns:ns3","@xmlns:ns4", "@xmlns:ns5"]);
@@ -659,8 +711,6 @@ const updateNodeWithHtmlData = (node, result) => {
                       }
                     });
                     let attr = tagAttr.length ? {...dataOfTags} : {}
-
-                    logger.debug('^^^^^^^^^^^^^^^ attr => ', attr);
                     runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`,false, attr));
                   } else if (tagIndex >= 0 && rPrData._children[tagIndex]._tag === `w:${el}` &&
                     rPrData._children[tagIndex]._attrs &&
@@ -680,12 +730,13 @@ const updateNodeWithHtmlData = (node, result) => {
             }
           });
           newNode._children.push(runner);
-          logger.debug('&&&&&&&&&&&&&&&&& End of New runner &&&&&&&&&&&&&&&&&&');
+          //logger.debug('&&&&&&&&&&&&&&&&& End of New runner &&&&&&&&&&&&&&&&&&');
 
         });
       }
-      logger.debug('********************* End of new paragraph *********************');
+      //logger.debug('********************* End of new paragraph *********************');
     });
+    newNode._children = newNode._children.filter(el => el._children.length);
     parent._parent._children.push(Object.assign({}, newNode));
   });
   return node;
