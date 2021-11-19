@@ -276,6 +276,8 @@ const processCmd = async (data, node, ctx) => {
     } else if (cmdName === 'EXEC') {
       if (!isLoopExploring(ctx)) await runUserJsAndGetRaw(data, cmdRest, ctx);
 
+    } else if (cmdName === 'HTML') {
+      return 'HTML command is not supported for now, please use INS instead';
       // Invalid command
     } else throw new Error(`Invalid command => ${cmd}`);
     return;
