@@ -642,9 +642,26 @@ const updateNodeWithHtmlData = (node, result) => {
                   return;
                 }
                 keys.forEach(el => {
+                  logger.debug('~~~~~~~~~~~~~~~~~~~~~~~~~ runner props', `w:${el}`);
                   let tagIndex = rPrData._children.findIndex((i) => i._tag === `w:${el}`);
                   if (tagIndex < 0) {
-                    runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`,false, {}));
+                    //let dataOfTags = omit(child[wrItems][el], ["@xmlns:ns1", "@xmlns:ns2", "@xmlns:ns3","@xmlns:ns4", "@xmlns:ns5"]);
+                    let dataOfTags = child[wrItems][el];
+                    let tagAttr = Object.keys(dataOfTags);
+                    tagAttr.forEach((ele) => {
+                      let s = ele.replace(/\d+/, (val) => "");
+                      if (s === '@ns:val') {
+                        dataOfTags['w:val'] = dataOfTags[ele];
+                        delete dataOfTags[ele];
+                      }
+                      if (s === '@xmlns:ns') {
+                        delete dataOfTags[ele]
+                      }
+                    });
+                    let attr = tagAttr.length ? {...dataOfTags} : {}
+
+                    logger.debug('^^^^^^^^^^^^^^^ attr => ', attr);
+                    runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`,false, attr));
                   } else if (tagIndex >= 0 && rPrData._children[tagIndex]._tag === `w:${el}` &&
                     rPrData._children[tagIndex]._attrs &&
                     rPrData._children[tagIndex]._attrs['w:val'] === 'false') {

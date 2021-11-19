@@ -846,7 +846,7 @@ const computeImageDimensions = (vNode, attributes) => {
   attributes.height = modifiedHeight;
 };
 
-const buildParagraph = (vNode, attributes, docxDocumentInstance) => {
+const buildParagraph = (vNode, attributes) => {
   const paragraphFragment = fragment({
     namespaceAlias: { w: namespaces.w },
   }).ele('@w', 'p');
@@ -931,7 +931,6 @@ const buildParagraph = (vNode, attributes, docxDocumentInstance) => {
       const runOrHyperlinkFragments = buildRunOrHyperLink(
         vNode,
         modifiedAttributes,
-        docxDocumentInstance
       );
       if (Array.isArray(runOrHyperlinkFragments)) {
         for (
@@ -955,7 +954,6 @@ const buildParagraph = (vNode, attributes, docxDocumentInstance) => {
         const runOrHyperlinkFragments = buildRunOrHyperLink(
           childVNode,
           modifiedAttributes,
-          docxDocumentInstance
         );
         if (Array.isArray(runOrHyperlinkFragments)) {
           for (
