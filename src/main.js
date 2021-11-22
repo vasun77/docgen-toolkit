@@ -123,7 +123,7 @@ async function createReport (options,_probe) {
     } else {
         queryResult = data;
     }
-    logger.debug(`check parsed data => ${JSON.stringify(queryResult)}`)
+    //logger.debug(`check parsed data => ${JSON.stringify(queryResult)}`)
 
     const prepped_secondaries = await prepSecondaryXMLs(
         zip,
@@ -143,7 +143,7 @@ async function createReport (options,_probe) {
     // - Images
     logger.debug('Generating report...');
     let ctx = newContext(createOptions, highest_img_id);
-    const result = await produceJsReport(queryResult, prepped_template, ctx);
+    const result = await produceJsReport(queryResult, prepped_template, ctx, prepped_secondaries);
     if (result.status === 'errors') {
         throw result.errors;
     }

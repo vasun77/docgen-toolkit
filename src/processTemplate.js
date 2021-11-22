@@ -321,11 +321,11 @@ export function getCommand(command, shorthands, fixSmartQuotes) {
   return cmd.trim();
 };
 
-export async function produceJsReport(data, template, ctx) {
-  return walkTemplate(data, template, ctx, processCmd); 
+export async function produceJsReport(data, template, ctx, prepped_secondaries) {
+  return walkTemplate(data, template, ctx, processCmd, prepped_secondaries); 
 }
 
-export async function walkTemplate(data, template, ctx, processor) {
+export async function walkTemplate(data, template, ctx, processor, prepped_secondaries) {
 
   const out = cloneNodeWithoutChildren(template);
   let nodeIn = template;
@@ -542,7 +542,7 @@ export async function walkTemplate(data, template, ctx, processor) {
           const isHTML = RegExp.prototype.test.bind(/(<([^>]+)>)/i);
           if (isHTML(result)) {
             const { literalXmlDelimiter }  = ctx.options;
-            let xml = convertHtml(result);
+            let xml = convertHtml(result, prepped_secondaries);
             nodeOut._parent = updateNodeWithHtmlData(nodeOut._parent, xml);
           } else {
             const newNodeAsTextNode = newNode;
@@ -647,23 +647,20 @@ const updateNodeWithHtmlData = (node, result) => {
               case 'jc':
                 let jcIndex = originalPprNode._children.findIndex((i) => i._tag === 'w:jc');
                 if (jcIndex < 0) {
-                    let dataOfTags = child[wpprItems];
-                    let tagAttr = Object.keys(dataOfTags);
-                    tagAttr.forEach((ele) => {
-                      let s = ele.replace(/\d+/, (val) => "");
-                      if (s === '@ns:val') {
-                        dataOfTags['w:val'] = dataOfTags[ele];
-                        delete dataOfTags[ele];
-                      }
-                      if (s === '@xmlns:ns') {
-                        delete dataOfTags[ele]
-                      }
-                    });
-                    let attr = tagAttr.length ? {...dataOfTags} : {}
-
-                    //logger.debug('^^^^^^^^^^^^^^^ attr => ', attr);
+                    let attr = updateTagAttributes(child[wpprItems]);
                     paraProps._children.push(createNewNode(`w:jc`,false, attr));
                 }
+                break;
+              case 'numPr':
+                let tagOfTags = child[wpprItems];
+                console.log('viewing tag of numPr', tagOfTags);
+                let innerTags = Object.keys(tagOfTags);
+                let numPr = createNewNode(`w:numPr`,false, {});
+                innerTags.forEach((tag) => {
+                  let attr = updateTagAttributes(child[wpprItems][tag]);
+                  numPr._children.push(createNewNode(`w:${tag}`, false, attr));
+                });
+                paraProps._children.push(numPr)
                 break;
               default:
                 break;
@@ -699,20 +696,7 @@ const updateNodeWithHtmlData = (node, result) => {
                 keys.forEach(el => {
                   let tagIndex = rPrData._children.findIndex((i) => i._tag === `w:${el}`);
                   if (tagIndex < 0) {
-                    //let dataOfTags = omit(child[wrItems][el], ["@xmlns:ns1", "@xmlns:ns2", "@xmlns:ns3","@xmlns:ns4", "@xmlns:ns5"]);
-                    let dataOfTags = child[wrItems][el];
-                    let tagAttr = Object.keys(dataOfTags);
-                    tagAttr.forEach((ele) => {
-                      let s = ele.replace(/\d+/, (val) => "");
-                      if (s === '@ns:val') {
-                        dataOfTags['w:val'] = dataOfTags[ele];
-                        delete dataOfTags[ele];
-                      }
-                      if (s === '@xmlns:ns') {
-                        delete dataOfTags[ele]
-                      }
-                    });
-                    let attr = tagAttr.length ? {...dataOfTags} : {}
+                    let attr = updateTagAttributes(child[wrItems][el]);
                     runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`,false, attr));
                   } else if (tagIndex >= 0 && rPrData._children[tagIndex]._tag === `w:${el}` &&
                     rPrData._children[tagIndex]._attrs &&
@@ -742,6 +726,22 @@ const updateNodeWithHtmlData = (node, result) => {
     parent._parent._children.push(Object.assign({}, newNode));
   });
   return node;
+}
+
+const updateTagAttributes = (dataOfTags) => {
+  let tagAttr = Object.keys(dataOfTags);
+  tagAttr.forEach((ele) => {
+    let s = ele.replace(/\d+/, (val) => "");
+    if (s === '@ns:val') {
+      dataOfTags['w:val'] = dataOfTags[ele];
+      delete dataOfTags[ele];
+    }
+    if (s === '@xmlns:ns') {
+      delete dataOfTags[ele]
+    }
+  });
+  return tagAttr.length ? {...dataOfTags} : {}
+
 }
 
 const processText = async (data, node, ctx, onCommand) => {
