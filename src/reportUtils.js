@@ -101,6 +101,33 @@ const createNewNode = (tag, isTextNode, attrs, text) => {
   }
 }
 
+const newNonTextNode = (
+  tag, attrs = {}, children = []
+ ) => {
+  const node = {
+    _fTextNode: false,
+    _tag: tag,
+    _attrs: attrs,
+    _children: children,
+  };
+  node._children.forEach(child => {
+    child._parent = node;
+  });
+  return node;
+};
+
+const newTextNode = (text) => {
+  const node = { _children: [], _fTextNode: true, _text: text };
+  return node;
+};
+
+const addChild = (parent, child) => {
+  parent._children.push(child);
+  child._parent = parent;
+  return child;
+};
+
+
 export {
   cloneNodeWithoutChildren,
   cloneNodeForLogging,
@@ -109,5 +136,8 @@ export {
   getCurLoop,
   isLoopExploring,
   logLoop,
+  addChild,
+  newNonTextNode,
+  newTextNode,
   createNewNode
 };

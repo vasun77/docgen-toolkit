@@ -302,7 +302,7 @@ const buildList = (vNode) => {
 };
 
 */
-function findXMLEquivalent(vNode, xmlFragment, prepped_secondaries) {
+function findXMLEquivalent(vNode, xmlFragment, prepped_secondaries, ctx) {
   if (
     vNode.tagName === 'div' &&
     (vNode.properties.attributes.class === 'page-break' ||
@@ -335,6 +335,7 @@ function findXMLEquivalent(vNode, xmlFragment, prepped_secondaries) {
         {
           paragraphStyle: `Heading${vNode.tagName[1]}`,
         },
+        ctx
       );
       xmlFragment.import(headingFragment);
       return;
@@ -356,7 +357,7 @@ function findXMLEquivalent(vNode, xmlFragment, prepped_secondaries) {
     case 'blockquote':
     case 'code':
     case 'pre':
-      const paragraphFragment = xmlBuilder.buildParagraph(vNode, {});
+      const paragraphFragment = xmlBuilder.buildParagraph(vNode, {}, ctx);
       xmlFragment.import(paragraphFragment);
       return;
     case 'ol':
@@ -371,13 +372,14 @@ function findXMLEquivalent(vNode, xmlFragment, prepped_secondaries) {
           listElement.node,
           {
             numbering: { levelId: listElement.level, numberingId },
-          }
+          },
+          ctx
         );
         xmlFragment.import(paragraphFragment);
       }
       return;
     case 'br':
-      const linebreakFragment = xmlBuilder.buildParagraph(null, {});
+      const linebreakFragment = xmlBuilder.buildParagraph(null, {}, ctx);
       xmlFragment.import(linebreakFragment);
       return;
     default:
@@ -394,7 +396,7 @@ function findXMLEquivalent(vNode, xmlFragment, prepped_secondaries) {
 }
 
 // eslint-disable-next-line consistent-return
-export function convertVTreeToXML(vTree, xmlFragment, prepped_secondaries) {
+export function convertVTreeToXML(vTree, xmlFragment, prepped_secondaries, ctx) {
   if (!vTree) {
     // eslint-disable-next-line no-useless-return
     return '';
@@ -403,23 +405,27 @@ export function convertVTreeToXML(vTree, xmlFragment, prepped_secondaries) {
     // eslint-disable-next-line no-plusplus
     for (let index = 0; index < vTree.length; index++) {
       const vNode = vTree[index];
-      convertVTreeToXML(vNode, xmlFragment, prepped_secondaries);
+      convertVTreeToXML(vNode, xmlFragment, prepped_secondaries, ctx);
     }
   } else if (isVNode(vTree)) {
-    findXMLEquivalent(vTree, xmlFragment, prepped_secondaries);
+    findXMLEquivalent(vTree, xmlFragment, prepped_secondaries, ctx);
   } else if (isVText(vTree)) {
     xmlBuilder.buildTextElement(xmlFragment, escape(String(vTree.text)));
   }
   return xmlFragment;
 }
 
-const convertHtml = (htmlStr, prepped_secondaries) =>  {
-  const vTree = getTreeFromHTML(htmlStr);
+const sanitizeHtml = (htmlStr) => {
+  return htmlStr.replace(/[\r\n]+/gm, "");
+}
+
+const convertHtml = (htmlStr, prepped_secondaries,ctx) =>  {
+  const vTree = getTreeFromHTML(sanitizeHtml(htmlStr));
   const xmlFragment = fragment({
     namespaceAlias: {w: namespaces.w},
   });
 
-  const populatedXmlFragment = convertVTreeToXML(vTree, xmlFragment, prepped_secondaries);
+  const populatedXmlFragment = convertVTreeToXML(vTree, xmlFragment, prepped_secondaries, ctx);
   return populatedXmlFragment.toObject();
 }
 

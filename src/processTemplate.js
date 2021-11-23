@@ -1,11 +1,11 @@
 import { omit } from 'timm';
-import { getNextSibling, getCurLoop, logLoop, isLoopExploring, cloneNodeWithoutChildren, cloneNodeForLogging, createNewNode } from './reportUtils';
+import { getNextSibling, getCurLoop, logLoop, isLoopExploring, cloneNodeWithoutChildren, cloneNodeForLogging, createNewNode,newTextNode } from './reportUtils';
 import { runUserJsAndGetRaw } from './jsSandbox';
 import { logger } from './debug';
 import { BUILT_IN_COMMANDS } from './constants';
 import convertHtml from './convertHtml';
 
-export function newContext(options, imageId = 0) {
+export function newContext(options, imageId = 0, relsId = 0) {
   return {
     gCntIf: 0,
     level: 1,
@@ -18,7 +18,7 @@ export function newContext(options, imageId = 0) {
     },
     imageId,
     images: {},
-    linkId: 0,
+    linkId: relsId,
     links: {},
     htmlId: 0,
     htmls: {},
@@ -542,7 +542,7 @@ export async function walkTemplate(data, template, ctx, processor, prepped_secon
           const isHTML = RegExp.prototype.test.bind(/(<([^>]+)>)/i);
           if (isHTML(result)) {
             const { literalXmlDelimiter }  = ctx.options;
-            let xml = convertHtml(result, prepped_secondaries);
+            let xml = convertHtml(result, prepped_secondaries, ctx);
             nodeOut._parent = updateNodeWithHtmlData(nodeOut._parent, xml);
           } else {
             const newNodeAsTextNode = newNode;
@@ -588,10 +588,10 @@ export async function walkTemplate(data, template, ctx, processor, prepped_secon
 const updateNodeWithHtmlData = (node, result) => {
   let parent = node._parent;
   let resultProps = result['p'];
-  logger.debug(`check total number of sibs`, parent._children.length,` and parent tag`, parent._tag);
+  //logger.debug(`check total number of sibs`, parent._children.length,` and parent tag`, parent._tag);
   for (let i =0; i < parent._children.length; i++) {
-    logger.debug(`child number ${i} and tag is ${parent._children[i]._tag}`);
-    logger.debug(`checking inside of node =>`, cloneNodeForLogging(parent._children[i]));
+    //logger.debug(`child number ${i} and tag is ${parent._children[i]._tag}`);
+    //logger.debug(`checking inside of node =>`, cloneNodeForLogging(parent._children[i]));
     if (parent._children[i]._tag === 'w:r') {
       let wrChild = parent._children[i];
       for(let j = 0; j < wrChild._children.length; j++) {
@@ -719,6 +719,57 @@ const updateNodeWithHtmlData = (node, result) => {
           //logger.debug('&&&&&&&&&&&&&&&&& End of New runner &&&&&&&&&&&&&&&&&&');
 
         });
+      } else if (props === 'hyperlink') {
+        let hyperlinkData = item[props];
+        let hyperAttr = Object.keys(hyperlinkData);
+        let hyperChild = null;
+        console.log('checking for hyper attr =>', hyperAttr);
+        hyperAttr.forEach((key) => {
+          console.log('looping keys ', key)
+          let s = key.replace(/\d+/, (val) => "");
+          switch(s) {
+            case '@ns:id':
+              hyperlinkData['r:id'] = hyperlinkData[key];
+              delete hyperlinkData[key];
+              break;
+
+            case '@xmlns:ns':
+              delete hyperlinkData[key];
+              break;
+
+            case 'r':
+              hyperChild= hyperlinkData['r'];
+              delete hyperlinkData['r']
+
+              //console.log('checking r data', rData);
+              //console.log('checking hyper data', hyperlinkData);
+          }
+        });
+        let attr = updateTagAttributes(hyperlinkData);
+        let hyperlinkTag = createNewNode('w:hyperlink', false, attr);
+        let rTag = createNewNode('w:r', false, {});
+        Object.keys(hyperChild).forEach((ele) => {
+            switch(ele) {
+              case 'rPr':
+                //console.log('rPr =>', hyperChild[ele]);
+                let rPrTag = createNewNode('w:rPr', false, {});
+                Object.keys(hyperChild[ele]).forEach((run) => {
+                  //console.log('running value', run, 'value => ', hyperChild[ele][run]);
+                  rPrTag._children.push(createNewNode(`w:${run}`, false, updateTagAttributes(hyperChild[ele][run])))
+                });
+                rTag._children.push(rPrTag);
+                break;
+              case 't':
+                let tNode = createNewNode(`w:t`, false, {'xml:space': 'preserve'});
+                console.log('check tNode', tNode);
+                tNode._children.push(newTextNode(hyperChild[ele]['#']));
+                rTag._children.push(tNode);
+                break;
+            }
+        });
+        hyperlinkTag._children.push(rTag);
+        console.log('checking hyperlink tag', hyperlinkTag._children[0]._children);
+        newNode._children.push(hyperlinkTag);
       }
       //logger.debug('********************* End of new paragraph *********************');
     });

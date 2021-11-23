@@ -1,7 +1,7 @@
 import { zipLoad, zipGetText, zipSetText, zipSave } from './zip';
 import { logger } from './debug';
 import { extractQuery, produceJsReport, findHighestImgId, newContext } from './processTemplate';
-
+import  { addChild, newNonTextNode } from './reportUtils'
 
 import { 
     CONTENT_TYPES_PATH, 
@@ -137,12 +137,15 @@ async function createReport (options,_probe) {
         findHighestImgId(prepped_template)
     );
 
+    //prep links
+     let relsId = await prepRels(mainDocument, zip, TEMPLATE_PATH);
+
     // Process document.xml:
     // - Generate the report
     // - Build output XML and write it to disk
     // - Images
     logger.debug('Generating report...');
-    let ctx = newContext(createOptions, highest_img_id);
+    let ctx = newContext(createOptions, highest_img_id, relsId);
     const result = await produceJsReport(queryResult, prepped_template, ctx, prepped_secondaries);
     if (result.status === 'errors') {
         throw result.errors;
@@ -286,6 +289,17 @@ const getCmdDelimiter = (cmdDelimiter) => {
         return [cmdDelimiter, cmdDelimiter]
     }
     return cmdDelimiter;
+}
+
+const prepRels = async (
+  documentComponent,
+  zip,
+  templatePath
+) => {
+  const relsPath = `${templatePath}/_rels/${documentComponent}.rels`;
+  const rels = await getRelsFromZip(zip, relsPath);
+  const relsId = rels._children.length;
+  return relsId;
 }
 
 const processImages = async (

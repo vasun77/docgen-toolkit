@@ -543,7 +543,7 @@ const buildRunOrRuns = (vNode, attributes) => {
   }
 };
 
-const buildRunOrHyperLink = (vNode, attributes) => {
+const buildRunOrHyperLink = (vNode, attributes, ctx) => {
   if (isVNode(vNode) && vNode.tagName === 'a') {
     // TODO need to work on creating document relations for hyperlinks
     /*
@@ -553,7 +553,12 @@ const buildRunOrHyperLink = (vNode, attributes) => {
       vNode.properties && vNode.properties.href ? vNode.properties.href : ''
     );
     */
-   const relationshipId = 1; //temp solution
+   let link = vNode.properties && vNode.properties.href ? vNode.properties.href : '';
+   const relationshipId = ctx.linkId; //temp solution
+   ctx.links[`rId${ctx.linkId}`] = {
+     url: link
+   }
+   ctx.linkId++;
     const hyperlinkFragment = fragment({
       namespaceAlias: { w: namespaces.w, r: namespaces.r },
     })
@@ -850,7 +855,7 @@ const computeImageDimensions = (vNode, attributes) => {
   attributes.height = modifiedHeight;
 };
 
-const buildParagraph = (vNode, attributes) => {
+const buildParagraph = (vNode, attributes, ctx) => {
   const paragraphFragment = fragment({
     namespaceAlias: { w: namespaces.w },
   }).ele('@w', 'p');
@@ -935,6 +940,7 @@ const buildParagraph = (vNode, attributes) => {
       const runOrHyperlinkFragments = buildRunOrHyperLink(
         vNode,
         modifiedAttributes,
+        ctx
       );
       if (Array.isArray(runOrHyperlinkFragments)) {
         for (
@@ -958,6 +964,7 @@ const buildParagraph = (vNode, attributes) => {
         const runOrHyperlinkFragments = buildRunOrHyperLink(
           childVNode,
           modifiedAttributes,
+          ctx
         );
         if (Array.isArray(runOrHyperlinkFragments)) {
           for (
