@@ -356,7 +356,7 @@ function findXMLEquivalent(vNode, xmlFragment, prepped_secondaries) {
     case 'blockquote':
     case 'code':
     case 'pre':
-      const paragraphFragment = xmlBuilder.buildParagraph(vNode, {}, prepped_secondaries);
+      const paragraphFragment = xmlBuilder.buildParagraph(vNode, {});
       xmlFragment.import(paragraphFragment);
       return;
     case 'ol':
@@ -403,7 +403,7 @@ export function convertVTreeToXML(vTree, xmlFragment, prepped_secondaries) {
     // eslint-disable-next-line no-plusplus
     for (let index = 0; index < vTree.length; index++) {
       const vNode = vTree[index];
-      convertVTreeToXML(vNode, xmlFragment);
+      convertVTreeToXML(vNode, xmlFragment, prepped_secondaries);
     }
   } else if (isVNode(vTree)) {
     findXMLEquivalent(vTree, xmlFragment, prepped_secondaries);

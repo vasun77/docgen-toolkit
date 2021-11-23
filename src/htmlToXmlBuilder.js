@@ -374,7 +374,7 @@ const buildTextFormatting = (vNode) => {
   }
 };
 
-const buildRun = (vNode, attributes, prepped_secondaries) => {
+const buildRun = (vNode, attributes) => {
   const runFragment = fragment({
     namespaceAlias: { w: namespaces.w },
   }).ele('@w', 'r');
@@ -441,24 +441,6 @@ const buildRun = (vNode, attributes, prepped_secondaries) => {
       // eslint-disable-next-line no-param-reassign
       vNode = new VText(combinedString);
     }
-  } else if (['ul', 'ol'].includes(vNode.tagName)) {
-    console.log('****************** build list here ****************************8');
-      //const listElements = buildList(vNode);
-      //const numberingId = createNumbering(listElements, prepped_secondaries);
-      /*
-      // eslint-disable-next-line no-plusplus
-      for (let index = 0; index < listElements.length; index++) {
-        const listElement = listElements[index];
-        // eslint-disable-next-line no-shadow
-        const paragraphFragment = xmlBuilder.buildParagraph(
-          listElement.node,
-          {
-            numbering: { levelId: listElement.level, numberingId },
-          }
-        );
-        xmlFragment.import(paragraphFragment);
-      }
-      */
   }
 
   runFragment.import(runPropertiesFragment);
@@ -524,7 +506,7 @@ const fixupRowHeight = (rowHeightString) => {
   }
 };
 
-const buildRunOrRuns = (vNode, attributes, prepped_secondaries) => {
+const buildRunOrRuns = (vNode, attributes) => {
   if (isVNode(vNode) && vNode.tagName === 'span') {
     const runFragments = [];
 
@@ -550,18 +532,18 @@ const buildRunOrRuns = (vNode, attributes, prepped_secondaries) => {
           modifiedAttributes.fontSize = fixupFontSize(vNode.properties.style['font-size']);
         }
       }
-      runFragments.push(buildRun(childVNode, modifiedAttributes,prepped_secondaries));
+      runFragments.push(buildRun(childVNode, modifiedAttributes));
     }
 
     return runFragments;
   } else {
-    const runFragment = buildRun(vNode, attributes, prepped_secondaries);
+    const runFragment = buildRun(vNode, attributes);
 
     return runFragment;
   }
 };
 
-const buildRunOrHyperLink = (vNode, attributes, prepped_secondaries) => {
+const buildRunOrHyperLink = (vNode, attributes) => {
   if (isVNode(vNode) && vNode.tagName === 'a') {
     // TODO need to work on creating document relations for hyperlinks
     /*
@@ -581,7 +563,7 @@ const buildRunOrHyperLink = (vNode, attributes, prepped_secondaries) => {
     const modifiedAttributes = { ...attributes };
     modifiedAttributes.hyperlink = true;
 
-    const runFragments = buildRunOrRuns(vNode.children[0], modifiedAttributes, prepped_secondaries);
+    const runFragments = buildRunOrRuns(vNode.children[0], modifiedAttributes);
     if (Array.isArray(runFragments)) {
       for (let index = 0; index < runFragments.length; index++) {
         const runFragment = runFragments[index];
@@ -868,7 +850,7 @@ const computeImageDimensions = (vNode, attributes) => {
   attributes.height = modifiedHeight;
 };
 
-const buildParagraph = (vNode, attributes, prepped_secondaries) => {
+const buildParagraph = (vNode, attributes) => {
   const paragraphFragment = fragment({
     namespaceAlias: { w: namespaces.w },
   }).ele('@w', 'p');
