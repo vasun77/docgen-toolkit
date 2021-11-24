@@ -605,12 +605,9 @@ const updateNodeWithHtmlData = (node, result) => {
     }
   }
 
-  logger.debug('Total number childrens this parent parent has', parent._parent._children.length);
-  logger.debug('Tag of this parent parent is', parent._parent._tag);
   logger.debug(`result properties => ${JSON.stringify(resultProps)}`);
 
   parent._parent._children.pop();
-  let store = [];
   if (resultProps && !Array.isArray(resultProps)) {
     resultProps = [resultProps];
   }
@@ -629,7 +626,10 @@ const updateNodeWithHtmlData = (node, result) => {
         let originalPprNode = {...parent._children[originalPprChildIndex]};
         //logger.debug(`original ppr node => `, originalPprNode);
         let paraProps = cloneNodeWithoutChildren(originalPprNode);
-        paraProps._children = originalPprNode._children.map((el) => cloneNodeWithoutChildren(el));
+        paraProps._children = [];
+        if (originalPprNode && originalPprNode._children) {
+          paraProps._children = originalPprNode._children.map((el) => cloneNodeWithoutChildren(el));
+        }
         // update all the children nodes
         for (var i = 0; i < paraProps._children.length; i++) {
           paraProps._children[i]._children = originalPprNode._children[i]._children.map((el) => cloneNodeWithoutChildren(el));
@@ -653,7 +653,6 @@ const updateNodeWithHtmlData = (node, result) => {
                 break;
               case 'numPr':
                 let tagOfTags = child[wpprItems];
-                console.log('viewing tag of numPr', tagOfTags);
                 let innerTags = Object.keys(tagOfTags);
                 let numPr = createNewNode(`w:numPr`,false, {});
                 innerTags.forEach((tag) => {
@@ -682,7 +681,10 @@ const updateNodeWithHtmlData = (node, result) => {
           //logger.debug('&&&&&&&&&&&&&&&&&&&&& New runner &&&&&&&&&&&&&&&&&&&&&');
           let runner = cloneNodeWithoutChildren(originalWrNode);
           let childProps = Object.keys(child);
-          runner._children = originalWrNode._children.map((el) => cloneNodeWithoutChildren(el));
+          runner._children = [];
+          if (originalWrNode && originalWrNode._children) {
+            runner._children = originalWrNode._children.map((el) => cloneNodeWithoutChildren(el));
+          }
           childProps.forEach((wrItems) => {
             let keys = Object.keys(child[wrItems]);
             switch(wrItems) {
@@ -700,7 +702,8 @@ const updateNodeWithHtmlData = (node, result) => {
                     runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`,false, attr));
                   } else if (tagIndex >= 0 && rPrData._children[tagIndex]._tag === `w:${el}` &&
                     rPrData._children[tagIndex]._attrs &&
-                    rPrData._children[tagIndex]._attrs['w:val'] === 'false') {
+                    (rPrData._children[tagIndex]._attrs['w:val'] === 'false' ||
+                    rPrData._children[tagIndex]._attrs['w:val'] === '0')) {
                       runner._children[rPrIndex]._children.splice(tagIndex, 1);
                       runner._children[rPrIndex]._children.push(createNewNode(`w:${el}`, false, {}));
                   }
