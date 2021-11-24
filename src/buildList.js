@@ -213,7 +213,9 @@ const createNumbering = (listElements, prepped_secondaries) => {
 
 const buildList = (vNode) => {
   const listElements = [];
-
+  if (vNode && vNode.children && vNode.children.length) {
+    vNode.children = vNode.children.filter((node) => node.tagName !== 'br');
+  }
   let vNodeObjects = [{ node: vNode, level: 0, type: vNode.tagName }];
   while (vNodeObjects.length) {
     const tempVNodeObject = vNodeObjects.shift();

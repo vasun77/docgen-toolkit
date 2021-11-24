@@ -786,12 +786,25 @@ const updateTagAttributes = (dataOfTags) => {
   let tagAttr = Object.keys(dataOfTags);
   tagAttr.forEach((ele) => {
     let s = ele.replace(/\d+/, (val) => "");
-    if (s === '@ns:val') {
-      dataOfTags['w:val'] = dataOfTags[ele];
-      delete dataOfTags[ele];
-    }
-    if (s === '@xmlns:ns') {
-      delete dataOfTags[ele]
+    switch(s) {
+      /* This case will be replaced with default */
+      case '@ns:val':
+        dataOfTags['w:val'] = dataOfTags[ele];
+        delete dataOfTags[ele];
+        break;
+      case '@xmlns:ns':
+        delete dataOfTags[ele]
+        break;
+      /* This case will be replaced with default */
+      case '@ns:fill':
+        dataOfTags['w:fill'] = dataOfTags[ele];
+        delete dataOfTags[ele];
+        break;
+      default:
+        let rep = s.replace(/@ns/, (val) => 'w')
+        dataOfTags[rep] = dataOfTags[ele];
+        delete dataOfTags[ele];
+        break;
     }
   });
   return tagAttr.length ? {...dataOfTags} : {}

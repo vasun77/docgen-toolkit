@@ -416,11 +416,12 @@ export function convertVTreeToXML(vTree, xmlFragment, prepped_secondaries, ctx) 
 }
 
 const sanitizeHtml = (htmlStr) => {
-  return htmlStr.replace(/[\r\n]+/gm, "");
+  return htmlStr.replace(/[\r\n]+/gm, "<br/>");
 }
 
 const convertHtml = (htmlStr, prepped_secondaries,ctx) =>  {
-  const vTree = getTreeFromHTML(sanitizeHtml(htmlStr));
+  let san = sanitizeHtml(htmlStr);
+  const vTree = getTreeFromHTML(san);
   const xmlFragment = fragment({
     namespaceAlias: {w: namespaces.w},
   });
