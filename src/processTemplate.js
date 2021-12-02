@@ -614,7 +614,10 @@ const updateNodeWithHtmlData = (node, result) => {
 
   resultProps.forEach((item) => {
     let newNode = cloneNodeWithoutChildren(parent);
-    newNode._children = parent._children.map((el) => cloneNodeWithoutChildren(el));
+    newNode._children = []
+    if (parent && parent._children) {
+      newNode._children = parent._children.map((el) => cloneNodeWithoutChildren(el));
+    }
     let paraProps = Object.keys(omit(item, ['@xmlns']));
     paraProps.forEach((props) => {
       //logger.debug('************************** new paragraph ***********************');
@@ -622,8 +625,16 @@ const updateNodeWithHtmlData = (node, result) => {
         //paragraph properties
         //console.log('checking para props', item['pPr']);
         let pprChildProps = item['pPr'];
-        let originalPprChildIndex = parent._children.findIndex((i) => i._tag === 'w:pPr')
-        let originalPprNode = {...parent._children[originalPprChildIndex]};
+        let originalPprChildIndex = -1;
+        if (parent && parent._children) {
+          originalPprChildIndex = parent._children.findIndex((i) => i._tag === 'w:pPr')
+        }
+        let originalPprNode = null; 
+        if (originalPprChildIndex < 0) {
+          originalPprNode = newNonTextNode('w:pPr');
+        } else {
+          originalPprNode = {...parent._children[originalPprChildIndex]};
+        }
         //logger.debug(`original ppr node => `, originalPprNode);
         let paraProps = cloneNodeWithoutChildren(originalPprNode);
         paraProps._children = [];
@@ -672,8 +683,16 @@ const updateNodeWithHtmlData = (node, result) => {
       } else 
       if (props === 'r') {
         let wrChildProps = item['r'];
-        let originalWrChildIndex = parent._children.findIndex((i) => i._tag === 'w:r')
-        let originalWrNode = {...parent._children[originalWrChildIndex]};
+        let originalWrChildIndex = -1;
+        if (parent && parent._children) {
+          originalWrChildIndex = parent._children.findIndex((i) => i._tag === 'w:r')
+        }
+        let originalWrNode = null;
+        if (originalWrChildIndex < 0) {
+          originalWrNode = newNonTextNode('w:r');
+        } else {
+          originalWrNode = {...parent._children[originalWrChildIndex]};
+        }
         if (wrChildProps && !Array.isArray(wrChildProps)) {
           wrChildProps = [wrChildProps];
         }
