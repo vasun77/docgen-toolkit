@@ -745,9 +745,10 @@ const updateNodeWithHtmlData = (node, result) => {
               case 'br':
                 let attr = updateTagAttributes(child[wrItems]);
                 runner._children.push(createNewNode(`w:br`, false, attr));
+                break;
               default:
-                let attr = updateTagAttributes(child[wrItems]);
-                runner._children.push(createNewNode(`w:${wrItems}`, false, attr));
+                let defaultAttr = updateTagAttributes(child[wrItems]);
+                runner._children.push(createNewNode(`w:${wrItems}`, false, defaultAttr));
                 break;
             }
           });
