@@ -416,7 +416,7 @@ export function convertVTreeToXML(vTree, xmlFragment, prepped_secondaries, ctx) 
 }
 
 const sanitizeHtml = (htmlStr) => {
-  return htmlStr.replace(/[\r\n]+/gm, "<br/>");
+  return htmlStr.replace(/[\r\n]+/gm, "<br>");
 }
 
 const convertHtml = (htmlStr, prepped_secondaries,ctx) =>  {

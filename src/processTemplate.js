@@ -690,8 +690,17 @@ const updateNodeWithHtmlData = (node, result) => {
             switch(wrItems) {
               case 'rPr':
                 let rPrIndex = originalWrNode._children.findIndex((i) => i._tag === 'w:rPr');
-                let rPrData = originalWrNode._children[rPrIndex];
-                runner._children[rPrIndex]._children = rPrData._children.map((el) => cloneNodeWithoutChildren(el));
+                let rPrData = null;
+                if (rPrIndex < 0) {
+                  rPrData = newNonTextNode('w:rPr');
+                  runner._children.push(rPrData);
+                  rPrIndex = runner._children.length - 1;
+                } else {
+                  rPrData = originalWrNode._children[rPrIndex];
+                }
+                if (rPrData && rPrData._children) {
+                  runner._children[rPrIndex]._children = rPrData._children.map((el) => cloneNodeWithoutChildren(el));
+                }
                 if (!keys || !keys.length) {
                   return;
                 }
@@ -714,7 +723,12 @@ const updateNodeWithHtmlData = (node, result) => {
                 runner._children[tIndex]._children = originalWrNode._children[tIndex]._children.map((el) => Object.assign({}, el));
                 runner._children[tIndex]._children[0]._text = child[wrItems]['#'];
                 break;
+              case 'br':
+                let attr = updateTagAttributes(child[wrItems]);
+                runner._children.push(createNewNode(`w:br`, false, attr));
               default:
+                let attr = updateTagAttributes(child[wrItems]);
+                runner._children.push(createNewNode(`w:${wrItems}`, false, attr));
                 break;
             }
           });
