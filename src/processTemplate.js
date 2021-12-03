@@ -1,5 +1,5 @@
 import { omit } from 'timm';
-import { getNextSibling, getCurLoop, logLoop, isLoopExploring, cloneNodeWithoutChildren, cloneNodeForLogging, createNewNode,newTextNode } from './reportUtils';
+import { getNextSibling, getCurLoop, logLoop, isLoopExploring, cloneNodeWithoutChildren, cloneNodeForLogging, createNewNode,newTextNode, newNonTextNode } from './reportUtils';
 import { runUserJsAndGetRaw } from './jsSandbox';
 import { logger } from './debug';
 import { BUILT_IN_COMMANDS } from './constants';
