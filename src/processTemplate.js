@@ -587,7 +587,6 @@ export async function walkTemplate(data, template, ctx, processor, prepped_secon
 
 const updateNodeWithHtmlData = (node, result) => {
   let parent = node._parent;
-  let resultProps = result['p'];
   //logger.debug(`check total number of sibs`, parent._children.length,` and parent tag`, parent._tag);
   for (let i =0; i < parent._children.length; i++) {
     //logger.debug(`child number ${i} and tag is ${parent._children[i]._tag}`);
@@ -605,9 +604,29 @@ const updateNodeWithHtmlData = (node, result) => {
     }
   }
 
-  logger.debug(`result properties => ${JSON.stringify(resultProps)}`);
+  let resultsData = Object.keys(result);
+  let popped_child = parent._parent._children.pop();
+  resultsData.forEach((el) => {
+    let resultProps = result[el];
+    logger.debug(`result properties => ${JSON.stringify(resultProps)}`);
+    switch(el) {
+      case 'p':
+        processParagraphData(resultProps, parent);
+        break;
+      case 't':
+        processTextNodeData(resultProps, parent, popped_child);
+        break;
+      default:
+        logger.debug('################################');
+        logger.debug('unprocessed element in the document =>',el);
+        logger.debug('################################');
+    }
 
-  parent._parent._children.pop();
+  });
+  return node;
+}
+
+const processParagraphData = (resultProps, parent) => {
   if (resultProps && !Array.isArray(resultProps)) {
     resultProps = [resultProps];
   }
@@ -739,8 +758,15 @@ const updateNodeWithHtmlData = (node, result) => {
                 break;
               case 't':
                 let tIndex = originalWrNode._children.findIndex((item) => item._tag === 'w:t');
-                runner._children[tIndex]._children = originalWrNode._children[tIndex]._children.map((el) => Object.assign({}, el));
-                runner._children[tIndex]._children[0]._text = child[wrItems]['#'];
+                if(tIndex < 0) {
+                  let newT = createNewNode(`w:t`, false, {"xml:space":"preserve"});
+                  newT._children.push(newTextNode(child[wrItems]['#']));
+                  originalWrNode._children.push(newT);
+                  runner._children.push(newT);
+                } else {
+                  runner._children[tIndex]._children = originalWrNode._children[tIndex]._children.map((el) => Object.assign({}, el));
+                  runner._children[tIndex]._children[0]._text = child[wrItems]['#'];
+                }
                 break;
               case 'br':
                 let attr = updateTagAttributes(child[wrItems]);
@@ -813,7 +839,21 @@ const updateNodeWithHtmlData = (node, result) => {
     newNode._children = newNode._children.filter(el => el._children.length);
     parent._parent._children.push(Object.assign({}, newNode));
   });
-  return node;
+
+}
+
+const processTextNodeData = (resultProps, parent, poppedChild) => {
+  for (var i = 0; i < poppedChild._children.length; i++) {
+    if (poppedChild._children[i]._tag === 'w:r') {
+      for (var j = 0; j < poppedChild._children[i]._children.length; j++) {
+        if (poppedChild._children[i]._children[j]._tag === 'w:t') {
+          poppedChild._children[i]._children[j]._children[0]._text = resultProps['#'];
+          parent._parent._children.push(poppedChild);
+          return;
+        }
+      }
+    }
+  }
 }
 
 const updateTagAttributes = (dataOfTags) => {
